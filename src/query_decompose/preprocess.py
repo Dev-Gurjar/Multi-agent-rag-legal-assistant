@@ -35,6 +35,6 @@ class PreprocessAttachment:
 
         if file_extension == ".pdf": return self._pdf_to_text(file_path)
         if file_extension == ".txt": return self._txt_to_text(file_path)
-        if file_extension == self.allowed_extensions: return self._img_to_text(file_path)
+        if file_extension in [".jpg", ".jpeg", ".png", ".tiff", ".bmp"]: return self._img_to_text(file_path)
         else:
             raise ValueError(f"Unsupported file type: {file_extension}")

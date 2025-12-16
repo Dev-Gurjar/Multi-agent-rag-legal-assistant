@@ -7,3 +7,5 @@ pillow
 faiss-cpu
 streamlit
 accelerate
+torch
+numpy

@@ -41,12 +41,27 @@ class Assistant:
     
     def __call__(self, text_query: str = None, attachment: str = None):
         intent = self._find_intent(text_query, attachment)
+        
+        # Handle errors from decomposer
+        if 'error' in intent:
+            return f"Error processing input: {intent['error']}"
+        
+        if 'sub_queries' not in intent or not intent['sub_queries']:
+            return "No valid queries could be extracted from the input."
+        
         subqueries = intent['sub_queries']
 
         results = []
 
         for subquery in subqueries:
-            results.append(self.task_alloc[subquery['task']](subquery['text']))
+            try:
+                task = subquery.get('task')
+                if task not in self.task_alloc:
+                    results.append(f"Unknown task: {task}")
+                    continue
+                results.append(self.task_alloc[task](subquery['text']))
+            except Exception as e:
+                results.append(f"Error processing subquery '{subquery.get('text', '')}': {str(e)}")
 
         return "".join(results)
     
