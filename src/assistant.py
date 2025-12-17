@@ -14,24 +14,32 @@ def _load_generation_pipeline():
     Load and cache the text-generation pipeline.
 
     The base model can be configured via the GEN_MODEL_ID environment variable.
-    By default it uses 'microsoft/Phi-3-mini-4k-instruct'.
+    By default it uses 'TinyLlama/TinyLlama-1.1B-Chat-v1.0' for faster loading.
     """
+    import torch
+    
     model_id = os.getenv("GEN_MODEL_ID", "TinyLlama/TinyLlama-1.1B-Chat-v1.0")
 
-    model = AutoModelForCausalLM.from_pretrained(
-        model_id,
-        device_map="auto",
-        torch_dtype="auto",
-        trust_remote_code=True,
-    )
+    try:
+        model = AutoModelForCausalLM.from_pretrained(
+            model_id,
+            device_map="cpu",
+            torch_dtype=torch.float32,
+            trust_remote_code=True,
+            low_cpu_mem_usage=True,
+        )
 
-    tokenizer = AutoTokenizer.from_pretrained(model_id)
+        tokenizer = AutoTokenizer.from_pretrained(model_id)
 
-    return pipeline(
-        "text-generation",
-        model=model,
-        tokenizer=tokenizer,
-    )
+        return pipeline(
+            "text-generation",
+            model=model,
+            tokenizer=tokenizer,
+            device=-1,  # CPU
+        )
+    except Exception as e:
+        print(f"Error loading model {model_id}: {e}")
+        raise
 
 
 class Assistant:
@@ -39,9 +47,9 @@ class Assistant:
         # Lazily load the generation pipeline so we only create it once,
         # which is important for deployment on limited free tiers.
         self.pipe = pipe or _load_generation_pipeline()
-        self.case_discovery_agent = CaseDiscoveryAgent(pipe)
-        self.legal_aid_agent = LegalAidAgent(pipe)
-        self.legal_drafting_agent = LegalDraftingAgent(pipe)
+        self.case_discovery_agent = CaseDiscoveryAgent(self.pipe)
+        self.legal_aid_agent = LegalAidAgent(self.pipe)
+        self.legal_drafting_agent = LegalDraftingAgent(self.pipe)
         self.decomposer = Decomposer()
 
         self.task_alloc = {

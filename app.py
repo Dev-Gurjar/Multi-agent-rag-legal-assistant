@@ -30,10 +30,14 @@ def ensure_data_exists():
                 import traceback
                 traceback.print_exc()
 
-# Ensure data exists before initializing assistant
-ensure_data_exists()
+# Lazy initialization - only create assistant when needed
+@st.cache_resource
+def get_assistant():
+    """Get or create the assistant instance (cached)."""
+    return Assistant()
 
-legal_assistant = Assistant()
+# Ensure data exists
+ensure_data_exists()
 
 def main():
     st.title("Legal Assistant")
@@ -57,6 +61,7 @@ def main():
                             f.write(attachment.getbuffer())
                         attachment_path = file_path
                     
+                    legal_assistant = get_assistant()
                     result = legal_assistant(text_query=query, attachment=attachment_path)
                     st.success("Query processed successfully!")
                     st.text_area("Response:", value=result, height=300)

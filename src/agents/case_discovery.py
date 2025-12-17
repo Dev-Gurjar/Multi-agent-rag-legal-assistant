@@ -75,6 +75,9 @@ class CaseDiscoveryAgent:
         return retrieved_docs
     
     def generate_summary(self, documents, query: str) -> str:
+        if not self.pipe:
+            return "Error: Text generation model not loaded."
+        
         if not documents:
             # No retrieved documents; fall back to answering from query alone.
             prompt = f"You are a legal research assistant. No relevant case documents were retrieved. Based only on your general legal knowledge, answer the following query:\n\n{query}"
@@ -82,8 +85,11 @@ class CaseDiscoveryAgent:
             concatenated_docs = "\n\n".join([doc["text"] for doc in documents])
             prompt = (concatenated_docs + "\n\n" + query)
 
-        summary = self.pipe(prompt[:4096], max_length=4096, temperature=0.7, top_p=0.9)
-        return summary[0]["generated_text"]
+        try:
+            summary = self.pipe(prompt[:4096], max_length=4096, temperature=0.7, top_p=0.9)
+            return summary[0]["generated_text"]
+        except Exception as e:
+            return f"Error generating summary: {str(e)}"
     
     def retrieve_and_generate(self, query, top_k=5):
         retrieval_results = self.fusion_retrieval(query, top_k)

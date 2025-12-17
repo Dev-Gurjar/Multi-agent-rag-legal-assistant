@@ -69,6 +69,9 @@ class LegalAidAgent:
         return retrieved_docs
 
     def provide_aid(self, query: str):
+        if not self.qa_pipeline:
+            return {"relevant_docs": [], "answer": "Error: Text generation model not loaded."}
+        
         relevant_docs = self.find_relevant_documents(query)
 
         # If we have no documents, fall back to answering from the LLM alone.
@@ -78,8 +81,11 @@ class LegalAidAgent:
             context = "\n\n".join([doc["content"] for doc in relevant_docs])
             prompt = f"Answer the following question using the context from the retrieved legal documents.\n\nQuestion: {query}\n\nContext:\n{context}"
 
-        completion = self.qa_pipeline(prompt[:4096], max_length=4096, temperature=0.7, top_p=0.9)
-        return {"relevant_docs": relevant_docs, "answer": completion[0]["generated_text"]}
+        try:
+            completion = self.qa_pipeline(prompt[:4096], max_length=4096, temperature=0.7, top_p=0.9)
+            return {"relevant_docs": relevant_docs, "answer": completion[0]["generated_text"]}
+        except Exception as e:
+            return {"relevant_docs": relevant_docs, "answer": f"Error generating answer: {str(e)}"}
 
     def __call__(self, query: str):
         self.build_index()
