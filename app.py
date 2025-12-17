@@ -17,7 +17,6 @@ def ensure_data_exists():
         with st.spinner("Downloading legal case dataset (first time setup)..."):
             try:
                 import sys
-                from pathlib import Path
                 scripts_path = Path(__file__).parent / "scripts"
                 sys.path.insert(0, str(scripts_path))
                 from setup_data import download_and_process
