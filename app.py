@@ -1,6 +1,38 @@
 import streamlit as st
 import os
+from pathlib import Path
 from src.assistant import Assistant
+
+# Auto-download legal dataset if not present (for Streamlit Cloud deployment)
+def ensure_data_exists():
+    """Ensure legal case data exists, download if missing."""
+    data_dir = Path("data/casedocs")
+    data_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Check if we have any case files
+    existing_files = list(data_dir.glob("*.txt"))
+    
+    if not existing_files:
+        # Download dataset on first run
+        with st.spinner("Downloading legal case dataset (first time setup)..."):
+            try:
+                import sys
+                from pathlib import Path
+                scripts_path = Path(__file__).parent / "scripts"
+                sys.path.insert(0, str(scripts_path))
+                from setup_data import download_and_process
+                count = download_and_process()
+                if count > 0:
+                    st.success(f"✅ Downloaded {count} legal cases!")
+                else:
+                    st.warning("⚠️ Could not download dataset. App will work but without case data.")
+            except Exception as e:
+                st.warning(f"⚠️ Dataset download failed: {e}. App will work but without case data.")
+                import traceback
+                traceback.print_exc()
+
+# Ensure data exists before initializing assistant
+ensure_data_exists()
 
 legal_assistant = Assistant()
 

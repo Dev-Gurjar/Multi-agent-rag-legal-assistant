@@ -46,11 +46,17 @@ class LegalAidAgent:
             except Exception as e:
                 print(f"Error processing {file_name}: {e}")
 
-        faiss.write_index(self.index, self.index_path)
-        print(f"FAISS index saved to {self.index_path}")
-        self.index_exist = True
+        # Only persist the index if we actually added documents.
+        if self.doc_metadata:
+            faiss.write_index(self.index, self.index_path)
+            print(f"FAISS index saved to {self.index_path}")
+            self.index_exist = True
 
     def find_relevant_documents(self, query: str, top_k: int = 3):
+        # If no documents were indexed, just return an empty list.
+        if not self.doc_metadata or self.index.ntotal == 0:
+            return []
+
         query_embedding = self.embedding_model.encode(query)
         distances, indices = self.index.search(np.array([query_embedding]), top_k)
 
@@ -64,10 +70,16 @@ class LegalAidAgent:
 
     def provide_aid(self, query: str):
         relevant_docs = self.find_relevant_documents(query)
-        context = "\n\n".join([doc["content"] for doc in relevant_docs])
 
-        answer = self.qa_pipeline(f"Answer the following questions:\n\nQuestion: {query}\n\nContext: {context}"[:4096], max_length=4096, temperature=0.7, top_p=0.9)
-        return {"relevant_docs": relevant_docs, "answer": answer[0]["generated_text"]}
+        # If we have no documents, fall back to answering from the LLM alone.
+        if not relevant_docs:
+            prompt = f"You are a legal assistant. Answer the following question as best as you can based only on your general legal knowledge:\n\nQuestion: {query}"
+        else:
+            context = "\n\n".join([doc["content"] for doc in relevant_docs])
+            prompt = f"Answer the following question using the context from the retrieved legal documents.\n\nQuestion: {query}\n\nContext:\n{context}"
+
+        completion = self.qa_pipeline(prompt[:4096], max_length=4096, temperature=0.7, top_p=0.9)
+        return {"relevant_docs": relevant_docs, "answer": completion[0]["generated_text"]}
 
     def __call__(self, query: str):
         self.build_index()

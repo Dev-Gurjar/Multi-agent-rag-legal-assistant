@@ -10,3 +10,5 @@ streamlit
 accelerate
 torch
 numpy
+pandas
+requests

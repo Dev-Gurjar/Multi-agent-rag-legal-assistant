@@ -48,11 +48,17 @@ class CaseDiscoveryAgent:
             except Exception as e:
                 print(f"Error processing {file_name}: {e}")
 
-        faiss.write_index(self.index, self.index_path)
-        print(f"FAISS index saved to {self.index_path}")
-        self.index_exist = True
+        # Only persist the index if we actually added documents.
+        if self.doc_metadata:
+            faiss.write_index(self.index, self.index_path)
+            print(f"FAISS index saved to {self.index_path}")
+            self.index_exist = True
 
     def fusion_retrieval(self, query: str, top_k: int = 5):
+        # If no documents were indexed, return an empty list.
+        if not self.doc_metadata or self.index.ntotal == 0:
+            return []
+
         query_embedding = self.embedding_model.encode(query)
         distances, indices = self.index.search(np.array([query_embedding]), top_k)
 
@@ -69,9 +75,14 @@ class CaseDiscoveryAgent:
         return retrieved_docs
     
     def generate_summary(self, documents, query: str) -> str:
-        concatenated_docs = "\n\n".join([doc["text"] for doc in documents])
+        if not documents:
+            # No retrieved documents; fall back to answering from query alone.
+            prompt = f"You are a legal research assistant. No relevant case documents were retrieved. Based only on your general legal knowledge, answer the following query:\n\n{query}"
+        else:
+            concatenated_docs = "\n\n".join([doc["text"] for doc in documents])
+            prompt = (concatenated_docs + "\n\n" + query)
 
-        summary = self.pipe((concatenated_docs+'\n\n'+query)[:4096], max_length=4096, temperature=0.7, top_p=0.9)
+        summary = self.pipe(prompt[:4096], max_length=4096, temperature=0.7, top_p=0.9)
         return summary[0]["generated_text"]
     
     def retrieve_and_generate(self, query, top_k=5):
