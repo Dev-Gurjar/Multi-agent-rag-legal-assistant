@@ -1,27 +1,44 @@
 from transformers import pipeline, AutoModelForCausalLM, AutoTokenizer
+from functools import lru_cache
+import os
+
 from .agents.case_discovery import CaseDiscoveryAgent
 from .agents.legal_aid import LegalAidAgent
 from .agents.legal_draft import LegalDraftingAgent
 from .query_decompose.decompose import Decomposer
 
-model = AutoModelForCausalLM.from_pretrained(
-    "microsoft/Phi-3-mini-4k-instruct",
-    device_map="auto",
-    torch_dtype="auto",
-    trust_remote_code=True,
-)
 
-tokenizer = AutoTokenizer.from_pretrained("microsoft/Phi-3-mini-4k-instruct")
+@lru_cache(maxsize=1)
+def _load_generation_pipeline():
+    """
+    Load and cache the text-generation pipeline.
 
-pipe = pipeline(
-    "text-generation",
-    model=model,
-    tokenizer=tokenizer,
-)
+    The base model can be configured via the GEN_MODEL_ID environment variable.
+    By default it uses 'microsoft/Phi-3-mini-4k-instruct'.
+    """
+    model_id = os.getenv("GEN_MODEL_ID", "microsoft/Phi-3-mini-4k-instruct")
+
+    model = AutoModelForCausalLM.from_pretrained(
+        model_id,
+        device_map="auto",
+        torch_dtype="auto",
+        trust_remote_code=True,
+    )
+
+    tokenizer = AutoTokenizer.from_pretrained(model_id)
+
+    return pipeline(
+        "text-generation",
+        model=model,
+        tokenizer=tokenizer,
+    )
+
 
 class Assistant:
-    def __init__(self, pipe=pipe):
-        self.pipe = pipe
+    def __init__(self, pipe=None):
+        # Lazily load the generation pipeline so we only create it once,
+        # which is important for deployment on limited free tiers.
+        self.pipe = pipe or _load_generation_pipeline()
         self.case_discovery_agent = CaseDiscoveryAgent(pipe)
         self.legal_aid_agent = LegalAidAgent(pipe)
         self.legal_drafting_agent = LegalDraftingAgent(pipe)
