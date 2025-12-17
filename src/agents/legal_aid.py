@@ -25,6 +25,12 @@ class LegalAidAgent:
         return index
 
     def build_index(self):
+        # Ensure the knowledge base directory exists; if not, create it
+        # so the system can still answer using the LLM even without documents.
+        if not os.path.exists(self.knowledge_base_path):
+            os.makedirs(self.knowledge_base_path, exist_ok=True)
+            print(f"Created missing knowledge base directory at {self.knowledge_base_path}")
+
         for file_name in os.listdir(self.knowledge_base_path):
             file_path = os.path.join(self.knowledge_base_path, file_name)
             if not os.path.isfile(file_path):

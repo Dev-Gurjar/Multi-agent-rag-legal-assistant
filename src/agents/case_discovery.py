@@ -27,6 +27,12 @@ class CaseDiscoveryAgent:
         return index
     
     def build_index(self):
+        # Ensure the case documents directory exists; if not, create it
+        # so the system can still run even without any uploaded documents.
+        if not os.path.exists(self.case_docs_dir):
+            os.makedirs(self.case_docs_dir, exist_ok=True)
+            print(f"Created missing case docs directory at {self.case_docs_dir}")
+
         for file_name in os.listdir(self.case_docs_dir):
             file_path = os.path.join(self.case_docs_dir, file_name)
             if not os.path.isfile(file_path):
