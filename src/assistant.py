@@ -78,7 +78,7 @@ class Assistant:
                     continue
                 results.append(self.task_alloc[task](subquery['text']))
             except Exception as e:
-                results.append(f"Error processing subquery '{subquery.get('text', '')}': {str(e)}")
+                results.append(f"Erro processing subquery '{subquery.get('text', '')}': {str(e)}")
 
         return "".join(results)
     
