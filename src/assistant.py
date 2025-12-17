@@ -16,7 +16,7 @@ def _load_generation_pipeline():
     The base model can be configured via the GEN_MODEL_ID environment variable.
     By default it uses 'microsoft/Phi-3-mini-4k-instruct'.
     """
-    model_id = os.getenv("GEN_MODEL_ID", "microsoft/Phi-3-mini-4k-instruct")
+    model_id = os.getenv("GEN_MODEL_ID", "TinyLlama/TinyLlama-1.1B-Chat-v1.0")
 
     model = AutoModelForCausalLM.from_pretrained(
         model_id,

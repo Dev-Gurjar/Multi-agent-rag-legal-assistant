@@ -1,7 +1,6 @@
 from .preprocess import PreprocessAttachment
 import spacy
 from sentence_transformers import SentenceTransformer, util
-from spacy.cli import download
 
 LEGAL_TASK_LABELS = {
     "case discovery": ["case law", "precedent", "legal cases"],
@@ -10,16 +9,18 @@ LEGAL_TASK_LABELS = {
     "query resolution": ["answer", "resolve", "legal query"],
 }
 
+
 class Decomposer:
     def __init__(self) -> None:
         self.attachment_preprocessor = PreprocessAttachment()
-        try:
-            self.nlp = spacy.load("en_core_web_md")
-        except OSError:
-            download("en_core_web_md")
-            self.nlp = spacy.load("en_core_web_md")
 
-        self.embedding_model = SentenceTransformer("nlpaueb/legal-bert-base-uncased")
+        # The spaCy model is installed at build time via requirements.txt,
+        # so we just load it here without attempting any runtime downloads.
+        self.nlp = spacy.load("en_core_web_md")
+
+        # Use the same general-purpose embedding model used elsewhere
+        # to avoid downloading an additional large Legal-BERT model.
+        self.embedding_model = SentenceTransformer("all-mpnet-base-v2")
 
         self.task_embeddings = {
             task: self.embedding_model.encode(" ".join(keywords))
